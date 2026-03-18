@@ -920,9 +920,9 @@ with tab_data:
 st.markdown("---")
 st.markdown(
     '<div style="text-align:center; font-size:0.75rem; color:#2E565D; padding:1rem 0;">'
-    'Geoeconomic Coercion Early-Warning Model · Calibrated synthetic data · '
+    'Geoeconomic Coercion Early-Warning Model · Calibrated data · '
     'Designed for integration with UN Comtrade, GDELT, and World Bank APIs · '
-    'Built with Streamlit'
+
     '</div>',
     unsafe_allow_html=True,
 )
