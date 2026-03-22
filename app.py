@@ -287,9 +287,9 @@ with tab_summary:
 
     focus_pairs = risk_df[risk_df["reporter"] == focus_code]
     if len(focus_pairs) == 0:
-        focus_row = risk_df.iloc[risk_df["risk_score_100"].idxmax()]
+        focus_row = risk_df.loc[risk_df["risk_score_100"].idxmax()]
     else:
-        focus_row = focus_pairs.iloc[focus_pairs["risk_score_100"].idxmax()]
+        focus_row = focus_pairs.loc[focus_pairs["risk_score_100"].idxmax()]
 
     stack = compute_output_stack(focus_row)
     c1, c2, c3, c4 = st.columns([1, 1, 1, 1])
@@ -400,6 +400,8 @@ with tab_summary:
         fig_heat.update_xaxes(tickangle=45)
         fig_heat.update_traces(text=text_matrix, texttemplate="%{text}", textfont=dict(size=9))
         st.plotly_chart(fig_heat, use_container_width=True)
+    else:
+        st.info("Select at least 2 countries to generate the heatmap.")
 
 with tab_drivers:
     st.markdown('<div class="section-title">Key Drivers</div>', unsafe_allow_html=True)
@@ -524,6 +526,8 @@ with tab_scenarios:
             unsafe_allow_html=True,
         )
         st.markdown(sc["narrative"])
+    if not filtered:
+        st.info("No scenarios match the selected filters.")
 
     st.markdown("#### Counterfactual Stress-Test (within existing model dimensions)")
     stress_pair = st.selectbox(
@@ -553,7 +557,7 @@ with tab_scenarios:
 
 with tab_actions:
     st.markdown('<div class="section-title">Policy Implications</div>', unsafe_allow_html=True)
-    highest_pair = risk_df.iloc[risk_df["risk_score_100"].idxmax()]
+    highest_pair = risk_df.loc[risk_df["risk_score_100"].idxmax()]
     scenario = generate_scenario_narrative(highest_pair, "sanctions_escalation")
     stack_high = compute_output_stack(highest_pair)
 
