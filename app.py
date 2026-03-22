@@ -64,6 +64,18 @@ RISK_COLORS = {
 # Chart color sequence
 CHART_COLORS = ["#20808D", "#A84B2F", "#1B474D", "#BCE2E7", "#944454", "#FFC553", "#848456", "#6E522B"]
 
+
+SCENARIO_TYPE_LABELS = {
+    "trade_coercion": "Trade Coercion",
+    "supply_disruption": "Supply Disruption",
+    "sanctions_escalation": "Sanctions Escalation",
+    "route_vulnerability": "Route Vulnerability",
+}
+
+
+def scenario_type_label(scenario_type: str) -> str:
+    return SCENARIO_TYPE_LABELS.get(scenario_type, scenario_type.replace("_", " ").title())
+
 # ─────────────────────────────────────────────────────────────────────
 # Custom CSS
 # ─────────────────────────────────────────────────────────────────────
@@ -663,21 +675,20 @@ with tab_pair:
         
         scenario_type = st.selectbox(
             "Scenario type",
-            ["trade_coercion", "supply_disruption", "sanctions_escalation", "route_vulnerability"],
-            format_func=lambda x: x.replace("_", " ").title(),
+            list(SCENARIO_TYPE_LABELS.keys()),
+            format_func=scenario_type_label,
             key="pair_scenario_type",
         )
         
         scenario = generate_scenario_narrative(row, scenario_type)
         
-        tier_lower = scenario["risk_tier"].lower()
         st.markdown(
-            f'<div class="scenario-card" style="border-left-color:{RISK_COLORS.get(scenario["risk_tier"], "#20808D")}">'
-            f'<h4>{scenario["trigger"]}</h4>'
-            f'<p>{scenario["narrative"]}</p>'
+            f'<div class="scenario-card" style="border-left-color:{RISK_COLORS.get(scenario["risk_tier"], "#20808D")}; margin-bottom:0.5rem;">'
+            f'<h4>{scenario_type_label(scenario_type)} · {scenario["trigger"]}</h4>'
             f'</div>',
             unsafe_allow_html=True,
         )
+        st.markdown(scenario["narrative"])
     else:
         st.warning("No data found for this pair.")
 
@@ -804,16 +815,18 @@ with tab_scenario:
     scenarios = generate_all_scenarios(risk_df, top_n=n_scenarios)
     
     # Filter by scenario type
-    scenario_types = list(set(s["scenario_type"] for s in scenarios))
+    scenario_types = [s for s in SCENARIO_TYPE_LABELS.keys() if any(sc["scenario_type"] == s for sc in scenarios)]
     type_filter = st.multiselect(
         "Filter by scenario type",
         scenario_types,
         default=scenario_types,
-        format_func=lambda x: x.replace("_", " ").title(),
+        format_func=scenario_type_label,
         key="scenario_filter",
+        help="Clear all selections to view all scenario types.",
     )
-    
-    filtered = [s for s in scenarios if s["scenario_type"] in type_filter]
+
+    active_types = type_filter or scenario_types
+    filtered = [s for s in scenarios if s["scenario_type"] in active_types]
     
     for i, sc in enumerate(filtered):
         risk_tier = sc["risk_tier"]
@@ -821,19 +834,19 @@ with tab_scenario:
         risk_class = risk_tier.lower()
         
         st.markdown(
-            f'<div class="scenario-card" style="border-left-color:{color};">'
+            f'<div class="scenario-card" style="border-left-color:{color}; margin-bottom:0.4rem;">'
             f'<div style="display:flex; justify-content:space-between; align-items:center;">'
             f'<h4>{sc["reporter_name"]} → {sc["partner_name"]}</h4>'
             f'<div><span class="risk-badge risk-{risk_class}">{risk_tier}</span> '
             f'<span style="font-weight:600; color:#13343B; margin-left:0.5rem;">{sc["risk_score"]:.1f}</span></div>'
             f'</div>'
-            f'<div style="font-size:0.75rem; color:{color}; text-transform:uppercase; '
+            f'<div title="{scenario_type_label(sc["scenario_type"])}" style="font-size:0.75rem; color:{color}; text-transform:uppercase; '
             f'letter-spacing:0.04em; margin-bottom:0.5rem; font-weight:600;">'
-            f'{sc["trigger"]}</div>'
-            f'<p>{sc["narrative"]}</p>'
+            f'{scenario_type_label(sc["scenario_type"])} · {sc["trigger"]}</div>'
             f'</div>',
             unsafe_allow_html=True,
         )
+        st.markdown(sc["narrative"])
     
     if not filtered:
         st.info("No scenarios match the selected filters.")
