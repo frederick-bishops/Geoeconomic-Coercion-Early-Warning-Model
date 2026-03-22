@@ -4,8 +4,6 @@ Geoeconomic Coercion Early-Warning Model
 Institutional analytical environment for bilateral coercion risk assessment.
 """
 
-import io
-
 import numpy as np
 import pandas as pd
 import plotly.express as px
@@ -114,6 +112,62 @@ def apply_styling(tokens: dict) -> None:
             @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
             .stApp {{ background: {tokens['app_bg']}; color: {tokens['text_primary']}; font-family: 'Inter', sans-serif; }}
             section[data-testid="stSidebar"] {{ background: {tokens['sidebar_bg']}; border-right: 1px solid {tokens['border']}; }}
+            /* --- Dark mode header/chrome fix --- */
+            header[data-testid="stHeader"] {{
+                background: {tokens['app_bg']} !important;
+                color: {tokens['text_primary']} !important;
+            }}
+            header[data-testid="stHeader"] button,
+            header[data-testid="stHeader"] a,
+            header[data-testid="stHeader"] svg {{
+                color: {tokens['text_secondary']} !important;
+                fill: {tokens['text_secondary']} !important;
+                opacity: 0.85;
+            }}
+            header[data-testid="stHeader"] button:hover,
+            header[data-testid="stHeader"] a:hover {{
+                color: {tokens['text_primary']} !important;
+                opacity: 1;
+            }}
+            /* --- Dark mode sidebar contrast fix --- */
+            section[data-testid="stSidebar"] label,
+            section[data-testid="stSidebar"] .stSelectbox label,
+            section[data-testid="stSidebar"] .stSlider label {{
+                color: {tokens['text_primary']} !important;
+            }}
+            section[data-testid="stSidebar"] .stSelectbox [data-baseweb="select"] {{
+                background: {tokens['panel_bg']} !important;
+                border-color: {tokens['border']} !important;
+            }}
+            section[data-testid="stSidebar"] .stSelectbox [data-baseweb="select"] * {{
+                color: {tokens['text_primary']} !important;
+            }}
+            section[data-testid="stSidebar"] h3 {{
+                color: {tokens['text_primary']} !important;
+            }}
+            section[data-testid="stSidebar"] .stMarkdown p,
+            section[data-testid="stSidebar"] .stMarkdown span {{
+                color: {tokens['text_secondary']} !important;
+            }}
+            section[data-testid="stSidebar"] .stSlider [data-baseweb="slider"] {{
+                color: {tokens['text_primary']} !important;
+            }}
+            /* --- Tab visibility fix for dark mode --- */
+            .stTabs [data-baseweb="tab-list"] button {{
+                color: {tokens['text_secondary']} !important;
+                font-weight: 500;
+            }}
+            .stTabs [data-baseweb="tab-list"] button[aria-selected="true"] {{
+                color: {tokens['text_primary']} !important;
+                font-weight: 600;
+                border-bottom-color: {tokens['accent']} !important;
+            }}
+            .stTabs [data-baseweb="tab-list"] button:hover {{
+                color: {tokens['text_primary']} !important;
+            }}
+            .stTabs [data-baseweb="tab-list"] {{
+                border-bottom-color: {tokens['border']} !important;
+            }}
             .app-title {{font-size: 1.95rem; font-weight: 650; margin-bottom: 0.25rem;}}
             .app-subtitle {{font-size: 1rem; color: {tokens['text_secondary']}; margin-bottom: 1rem;}}
             .section-title {{font-size: 1.2rem; font-weight: 600; margin-top:0.2rem; margin-bottom:0.6rem;}}
@@ -136,6 +190,7 @@ def apply_styling(tokens: dict) -> None:
             .scenario-card {{background:{tokens['panel_bg']}; border:1px solid {tokens['border']}; border-left:4px solid {tokens['accent']}; border-radius:10px; padding:0.9rem 1rem; margin-bottom:0.45rem;}}
             .insignia {{font-size:0.73rem; letter-spacing:0.12em; color:{tokens['text_muted']}; text-transform:uppercase;}}
             .data-window {{font-size:0.78rem; color:{tokens['text_secondary']}; margin-bottom:0.5rem;}}
+            .sidebar-footer {{margin-top: 2rem; padding-top: 0.75rem; border-top: 1px solid {tokens['border']};}}
             .flag-critical {{background:#BF4A3A22; color:#BF4A3A; border:1px solid #BF4A3A66;}}
             .flag-high {{background:#A8862C22; color:#A8862C; border:1px solid #A8862C66;}}
             .flag-moderate {{background:#2C7A7B22; color:#2C7A7B; border:1px solid #2C7A7B66;}}
@@ -227,10 +282,20 @@ tokens = get_theme_tokens()
 apply_styling(tokens)
 
 with st.sidebar:
-    st.markdown('<div class="insignia">Designing Decision Systems</div>', unsafe_allow_html=True)
-    st.markdown('<div class="data-window">Data window: 2019–2024</div>', unsafe_allow_html=True)
+    focus_options = {v["name"]: k for k, v in COUNTRIES.items()}
+    st.markdown("### Focus Country")
+    focus_name = st.selectbox("Focus Country", list(focus_options.keys()), index=list(focus_options.keys()).index("United States"), label_visibility="collapsed")
+    focus_code = focus_options[focus_name]
 
     st.markdown("### Model Parameters")
+
+    w_trade = st.slider("Trade Dependence", 0.0, 1.0, st.session_state.w_trade, 0.02, key="w_trade")
+    w_commodity = st.slider("Commodity Concentration", 0.0, 1.0, st.session_state.w_commodity, 0.02, key="w_commodity")
+    w_diplo = st.slider("Diplomatic Intensity", 0.0, 1.0, st.session_state.w_diplo, 0.02, key="w_diplo")
+    w_sector = st.slider("Sector Exposure", 0.0, 1.0, st.session_state.w_sector, 0.02, key="w_sector")
+    w_route = st.slider("Route Exposure", 0.0, 1.0, st.session_state.w_route, 0.02, key="w_route")
+    w_alliance = st.slider("Alliance Dynamics", 0.0, 1.0, st.session_state.w_alliance, 0.02, key="w_alliance")
+
     if st.button("Reset Weights", use_container_width=True):
         st.session_state.w_trade = DEFAULT_WEIGHTS["trade_dependence"]
         st.session_state.w_commodity = DEFAULT_WEIGHTS["commodity_concentration"]
@@ -239,13 +304,6 @@ with st.sidebar:
         st.session_state.w_route = DEFAULT_WEIGHTS["route_exposure"]
         st.session_state.w_alliance = DEFAULT_WEIGHTS["alliance_dynamics"]
         st.rerun()
-
-    w_trade = st.slider("Trade Dependence", 0.0, 1.0, st.session_state.w_trade, 0.02, key="w_trade")
-    w_commodity = st.slider("Commodity Concentration", 0.0, 1.0, st.session_state.w_commodity, 0.02, key="w_commodity")
-    w_diplo = st.slider("Diplomatic Intensity", 0.0, 1.0, st.session_state.w_diplo, 0.02, key="w_diplo")
-    w_sector = st.slider("Sector Exposure", 0.0, 1.0, st.session_state.w_sector, 0.02, key="w_sector")
-    w_route = st.slider("Route Exposure", 0.0, 1.0, st.session_state.w_route, 0.02, key="w_route")
-    w_alliance = st.slider("Alliance Dynamics", 0.0, 1.0, st.session_state.w_alliance, 0.02, key="w_alliance")
 
     weights = {
         "trade_dependence": w_trade,
@@ -256,15 +314,12 @@ with st.sidebar:
         "alliance_dynamics": w_alliance,
     }
 
-    tuple_now = tuple(sorted(weights.items()))
-    if st.session_state.get("_last_weight_tuple") != tuple_now:
-        st.session_state["_last_weight_tuple"] = tuple_now
-        st.caption("Updating analysis with revised weights…")
+    st.session_state["_last_weight_tuple"] = tuple(sorted(weights.items()))
 
-    st.divider()
-    focus_options = {v["name"]: k for k, v in COUNTRIES.items()}
-    focus_name = st.selectbox("Focus Country", list(focus_options.keys()), index=list(focus_options.keys()).index("United States"))
-    focus_code = focus_options[focus_name]
+    st.markdown('<div class="sidebar-footer">', unsafe_allow_html=True)
+    st.markdown('<div class="insignia">Designing Decision Systems</div>', unsafe_allow_html=True)
+    st.markdown('<div class="data-window">Data window: 2019–2024</div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
 
 data = get_data(seed=42)
@@ -278,8 +333,8 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-tab_summary, tab_drivers, tab_scenarios, tab_actions, tab_export = st.tabs(
-    ["Summary", "Drivers", "Scenarios", "Actions", "Data Export"]
+tab_summary, tab_drivers, tab_scenarios, tab_actions = st.tabs(
+    ["Summary", "Drivers", "Scenarios", "Actions"]
 )
 
 with tab_summary:
@@ -606,36 +661,6 @@ with tab_actions:
         }
     )
     st.dataframe(rationale_df, use_container_width=True, hide_index=True)
-
-with tab_export:
-    st.markdown('<div class="section-title">Data Export</div>', unsafe_allow_html=True)
-    all_scenarios = generate_all_scenarios(risk_df, top_n=30)
-
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        export_risk = risk_df.copy()
-        st.download_button("Download Risk Scores CSV", data=export_risk.to_csv(index=False).encode("utf-8"), file_name="coercion_risk_scores.csv", mime="text/csv")
-        st.caption(f"Records: {len(export_risk)}")
-    with col2:
-        st.download_button("Download Sector Flags CSV", data=sector_flags.to_csv(index=False).encode("utf-8"), file_name="sector_risk_flags.csv", mime="text/csv")
-        st.caption(f"Records: {len(sector_flags)}")
-    with col3:
-        df_scenarios = pd.DataFrame(all_scenarios)
-        st.download_button("Download Scenarios CSV", data=df_scenarios.to_csv(index=False).encode("utf-8"), file_name="escalation_scenarios.csv", mime="text/csv")
-        st.caption(f"Records: {len(df_scenarios)}")
-
-    buffer = io.BytesIO()
-    with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
-        export_risk.to_excel(writer, sheet_name="Risk Scores", index=False)
-        sector_flags.to_excel(writer, sheet_name="Sector Flags", index=False)
-        df_scenarios.to_excel(writer, sheet_name="Scenarios", index=False)
-    st.download_button(
-        "Download Full Report (Excel)",
-        data=buffer.getvalue(),
-        file_name="geoeconomic_coercion_report.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    )
-    st.caption(f"Full export record counts — risk pairs: {len(export_risk)}, sector flags: {len(sector_flags)}, scenarios: {len(df_scenarios)}")
 
 st.markdown("<div class='bottom-space'></div>", unsafe_allow_html=True)
 st.markdown(
